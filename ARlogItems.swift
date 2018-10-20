@@ -9,13 +9,6 @@
 // STATIC SETTING DEFAULTS
 private let ARLOG_VERSION = 1 // current version of ARlog & its LogSession data structure
 
-#if DEBUG
-
-import Foundation
-#if os(iOS)
-import UIKit
-#endif
-
 // ENUMS -------------------------------------------------------------------------
 
 // Hint: single character symbols are shown in timeline of ARInspector, others are  internally used
@@ -66,41 +59,51 @@ public struct LogItem : Codable {
     }
     
     init(type:String, title:String) {
+        #if os(iOS)
         self.time = getDeltaTime()
         self.status = getStatus()
+        #endif
         self.type = type
         self.title = title
     }
     
     init(type:String, title:String, text:String) {
+        #if os(iOS)
         self.time = getDeltaTime()
         self.status = getStatus()
+        #endif
         self.type = type
         self.title = title
         self.data = text
     }
     
     init(type:String, title:String, assetPath:String) {
+        #if os(iOS)
         self.time = getDeltaTime()
         self.status = getStatus()
+        #endif
         self.type = type
         self.title = title
         self.ref = assetPath
     }
     
     init(type:String, title:String, data:String, withStatus:Bool = true) {
+        #if os(iOS)
         self.time = getDeltaTime()
         if withStatus {
             self.status = getStatus()
         }
+        #endif
         self.type = type
         self.title = title
         self.data = data
     }
     
     init(type:String, title:String, data:String, assetPath:String) {
+        #if os(iOS)
         self.time = getDeltaTime()
         self.status = getStatus()
+        #endif
         self.type = type
         self.title = title
         self.data = data
@@ -134,6 +137,7 @@ public struct SessionDevice : Codable {
     var screenHeight:Float = 0.0
 
     init() {
+#if os(iOS)
         var systemInfo = utsname()
         uname(&systemInfo)
         let machineMirror = Mirror(reflecting: systemInfo.machine)
@@ -142,13 +146,11 @@ public struct SessionDevice : Codable {
             return identifier + String(UnicodeScalar(UInt8(value)))
         }
         self.model = identifier
-#if os(iOS)
         self.name = UIDevice.current.name
         self.OS = UIDevice.current.systemName
         self.OSversion = UIDevice.current.systemVersion
         self.screenWidth = Float(UIScreen.main.bounds.width)
         self.screenHeight = Float(UIScreen.main.bounds.height)
-#endif
         self.CPUcores = ProcessInfo.processInfo.processorCount
         self.memory = Float(ProcessInfo.processInfo.physicalMemory) / (1024.0 * 1024.0)
         do {
@@ -165,6 +167,7 @@ public struct SessionDevice : Codable {
         } catch {
             
         }
+#endif
     }
 }
 
@@ -190,13 +193,17 @@ public struct LogSession : Codable {
     init(name:String, startTime:String) {
         self.sessionName = name
         self.sessionStart = startTime
+        #if os(iOS)
         self.appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as! String
         self.appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
         self.appID = Bundle.main.bundleIdentifier!
+        #endif
     }
 }
 
 // DEVICE STATUS -------------------------------------------------------------------------
+
+#if os(iOS)
 
 func getDeltaTime() -> Double {
 #if os(iOS)
@@ -279,7 +286,7 @@ private func cpuUsage() -> Float { // in %
     }
     return totalUsageOfCPU
 }
-
+#endif
 
 // AR DATA CAPTURING -------------------------------------------------------------------------
 // Data structures to store ARWorldMap & ARAnchors device-independantly (e.g. for macOS without ARKit)
@@ -310,5 +317,3 @@ public struct SpaceMap : Codable {
     var points: [Float] = [Float]() // array of float3: The list of detected points
     var identifiers: [UInt64] = [UInt64] () // UUIDs corresponding to detected float3 feature points? Not used!
 }
-
-#endif
