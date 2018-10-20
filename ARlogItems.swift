@@ -6,6 +6,10 @@
 //  See https://github.com/metason/ARlog for more details
 //
 
+#if os(iOS)
+import UIKit
+#endif
+
 // STATIC SETTING DEFAULTS
 private let ARLOG_VERSION = 1 // current version of ARlog & its LogSession data structure
 
@@ -203,8 +207,6 @@ public struct LogSession : Codable {
 
 // DEVICE STATUS -------------------------------------------------------------------------
 
-#if os(iOS)
-
 func getDeltaTime() -> Double {
 #if os(iOS)
     let dt:TimeInterval = Date.init().timeIntervalSince(ARlog.sessionStart!)
@@ -213,6 +215,8 @@ func getDeltaTime() -> Double {
     return -1.0
 #endif
 }
+
+#if os(iOS)
 
 // returns cpu mem (ToDo: gpu)
 func getStatus() -> String {

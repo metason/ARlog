@@ -20,7 +20,6 @@ private let MAX_SAVED_SESSIONS = 4 // Amount of sessions on device. Olders will 
 
 // MAIN CLASS -------------------------------------------------------------------------
 
-
 public class ARlog {
     // Settings: configurable during run-time, but typically before ARlog.start()
     static public var maxSavedSessions = MAX_SAVED_SESSIONS
@@ -32,9 +31,9 @@ public class ARlog {
     //static public var autoLogObjects:Bool = false // not yet implemented
     //static public var autoLogFaces:Bool = false // not yet implemented
     // Intervals for auto logging: no autologging when interval = 0.0
-    static public var cameraInterval:Double = 0.5 // interval for storing camera/device pose
-    static public var sceneInterval:Double = 0.25 // interval for storing 3D scene
-    static public var mapInterval:Double = 1.0 // interval for storing AR world map / space map
+    static public var cameraInterval:Double = 0.5 // interval for storing camera/device poses
+    static public var sceneInterval:Double = 0.25 // interval for storing 3D scenes when continouslyLogScene is true
+    static public var mapInterval:Double = 1.0 // interval for storing AR world maps / space maps
     static let fpsInterval:Double = 1.0 // frames per second, therefore interval is 1.0
 
     // Internal objects
