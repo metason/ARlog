@@ -21,7 +21,7 @@ ARlog is easy to integrate into existing projects based on ARKit. To install ARl
   * __ARlog.swift__
   * __ARlogItems.swift__
   2. Add one line of code in viewDidAppear of the ViewContoller to start ARlog. Add __ARlog.start()__ such as:
-```
+```swift
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         #if DEBUG
@@ -32,7 +32,7 @@ ARlog is easy to integrate into existing projects based on ARKit. To install ARl
 3. Add an additional line of code to stop ARlog. Add __ARlog.stop()__ in one of these cases:
 
 If your AR app only shows an AR view, then stop logging in the AppDelegate with
-```
+```swift
     func applicationDidEnterBackground(_ application: UIApplication) {
         #if DEBUG
         ARlog.stop() // <-- add
@@ -41,7 +41,7 @@ If your AR app only shows an AR view, then stop logging in the AppDelegate with
 ```
 
 If your app presents several views then stop logging when the AR view disappears. In the ViewContoller add:
-```
+```swift
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         #if DEBUG
@@ -56,6 +56,8 @@ Use XCode to get access to the logged data on your device:
 * Then select the Window -> Devices and Simulators menu in XCode
 * In the Devices tab select your app and then download the app container
 * In the Finder right-click on the downloaded .xcappdata file and select Show Content
+* Logged session data can be found in AppData/Documents/ARlogs
+* Drag&drop corresponding session folders to a local directory
 
 Each folder in AppData/Documents/ARlogs holds logged data of a specific session. The name of the session folder encodes the date and time when the log recording started. 
 
@@ -66,7 +68,7 @@ Coming soon ...
 ![ARInspector](Documentation/ARInspector.png)
 
 ### ARInspector for Mac 
-The __ARInspector__ app supports the analysis of AR sessions logged by ARlog. The main features of ARInspector are:
+The __ARInspector__ app supports the analysis of AR sessions recorded by ARlog. The main features of ARInspector are:
 * Play back of logged sessions in real-time or step-by-step
 * Charts for CPU usage, memory usage and graphics performance (in fps, frames per second)
 * See screen recording as video
@@ -81,6 +83,7 @@ The __ARInspector__ app supports the analysis of AR sessions logged by ARlog. Th
 * Keep video and 3D view in sync (view in 3D what the device camera looked at) 
 * List of events in a time-sorted table
 * Detailed data on events in a console
+* Create and manage issues (comments, ideas, bugs) within the session timeline
 
 ## ARlog Functions
 To enhance session logs with application-specific information, additional logging can be added programmatically in your code with the following functions.
@@ -111,5 +114,5 @@ Configure the behavior of ARlog with these setting parameters.
     ARlog.autoLogFaces:Bool = false // not yet implemented
     // Intervals for auto logging: no autologging when interval = 0.0
     ARlog.cameraInterval:Double = 0.5 // interval for storing camera/device pose
-    ARlog.sceneInterval:Double = 0.25 // interval for storing 3D scene
+    ARlog.sceneInterval:Double = 0.25 // interval for storing 3D scenes when continouslyLogScene is true
     ARlog.mapInterval:Double = 1.0 // interval for storing AR world map / space map 
