@@ -18,6 +18,10 @@ private let ARLOG_ENABLED = true // turn functionality of ARlog on/off
 // Be aware of storage usage by ARlog especially by screen recording.
 private let MAX_SAVED_SESSIONS = 4 // Amount of sessions on device. Olders will be deleted.
 
+// CONSTANTS
+public let atSessionStart:Double = 0.0
+public let atSessionEnd:Double = Double.greatestFiniteMagnitude
+
 // MAIN CLASS -------------------------------------------------------------------------
 
 public class ARlog {
@@ -43,7 +47,7 @@ public class ARlog {
     static var isScreenRecording = false
     static var assetWriter: AVAssetWriter!
     static var videoInput: AVAssetWriterInput!
-
+    static var testCases:[ARTestCase] = []
     static var session:LogSession!
     static var dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
     static var dateFormatter: DateFormatter {
@@ -67,6 +71,7 @@ public class ARlog {
     static var previousNodesCount:Int = 0
     static var fpsResetTime:Date = Date.init()
     static var frameCount = -1
+    static var testResetTime:Date = Date.init()
 
     // public static functions
     
@@ -96,6 +101,19 @@ public class ARlog {
     
     // use finalizeFunction to set user, location, and extra
     static func stop(finalizeFunction: () -> Void = {}) {
+        // run missing tests
+        for test in testCases {
+            if !test.executed {
+                test.passed = test.condition()
+                if test.passed {
+                    ARlog.session.logItems.append(LogItem(type: LogSymbol.passed.rawValue, title: test.description))
+                } else {
+                    ARlog.session.logItems.append(LogItem(type: LogSymbol.failed.rawValue, title: test.description))
+                }
+                test.executed = true
+            }
+        }
+        
         finalizeFunction()
         if !isEnabled {
             return
@@ -276,6 +294,75 @@ public class ARlog {
         }
         let str = String(format: "%i points, %i anchors", pointAmount, anchorAmount)
         ARlog.session.logItems.append(LogItem(type: LogSymbol.map.rawValue, title: title, data: str, assetPath: fileName))
+    }
+    
+    // colors as hexcode "#RRGGBBAA"
+    static func dominantColors(primary:String, secondary:String = "", relRect:CGRect = CGRect(x:0.0, y:0.0, width:1.0, height:1.0)) {
+        var observation = SpaceObservation()
+        observation.type = ObservationType.dominantColors.rawValue
+        observation.confidence = 1.0
+        if secondary.count > 0 {
+            observation.feature = primary + " " + secondary
+        } else {
+            observation.feature = primary
+        }
+        var str = "observation"
+        observation.bbox.append(Float((relRect.origin.x)))
+        observation.bbox.append(Float((relRect.origin.y)))
+        observation.bbox.append(Float((relRect.size.width)))
+        observation.bbox.append(Float((relRect.size.height)))
+        ARlog.encoder.outputFormatting = .prettyPrinted
+        let data = try? ARlog.encoder.encode(observation)
+        if data != nil {
+            str = String(data: data!, encoding: .utf8)!
+        }
+        ARlog.session.logItems.append(LogItem(type: LogSymbol.image.rawValue, title: "Dominant Colors", data: str))
+    }
+    
+    static func classifiedImage(label:String, confidence:Float, relRect:CGRect = CGRect(x:0.0, y:0.0, width:1.0, height:1.0)) {
+        var observation = SpaceObservation()
+        observation.type = ObservationType.classifiedImage.rawValue
+        observation.feature = label
+        observation.confidence = confidence
+        var str = "observation"
+        observation.bbox.append(Float((relRect.origin.x)))
+        observation.bbox.append(Float((relRect.origin.y)))
+        observation.bbox.append(Float((relRect.size.width)))
+        observation.bbox.append(Float((relRect.size.height)))
+        ARlog.encoder.outputFormatting = .prettyPrinted
+        let data = try? ARlog.encoder.encode(observation)
+        if data != nil {
+            str = String(data: data!, encoding: .utf8)!
+        }
+        ARlog.session.logItems.append(LogItem(type: LogSymbol.image.rawValue, title: "Image classified", data: str))
+    }
+    
+    static func detectedImage(label:String, confidence:Float, relRect:CGRect = CGRect(x:0.0, y:0.0, width:1.0, height:1.0)) {
+        var observation = SpaceObservation()
+        observation.type = ObservationType.detectedImage.rawValue
+        observation.feature = label
+        observation.confidence = confidence
+        var str = "observation"
+        observation.bbox.append(Float((relRect.origin.x)))
+        observation.bbox.append(Float((relRect.origin.y)))
+        observation.bbox.append(Float((relRect.size.width)))
+        observation.bbox.append(Float((relRect.size.height)))
+        ARlog.encoder.outputFormatting = .prettyPrinted
+        let data = try? ARlog.encoder.encode(observation)
+        if data != nil {
+            str = String(data: data!, encoding: .utf8)!
+        }
+        ARlog.session.logItems.append(LogItem(type: LogSymbol.image.rawValue, title: "Image detected", data: str))
+    }
+    
+    // add test case with assertion to evaluate condition at time (in sec) after session start
+    static func test(_ desc:String, assert: @escaping () -> Bool, at:Double = atSessionEnd) {
+        let testCase = ARTestCase()
+        testCase.description = desc
+        testCase.condition = assert
+        testCase.time = at
+        testCases.append(testCase)
+        testCases.sort(by: { $0.time < $1.time })
     }
 
     static func createSessionFolder() -> URL? {
@@ -537,6 +624,27 @@ public class ARlog {
                 }
             }
         }
+        // check tests
+        if now.timeIntervalSince(testResetTime) >= 0.0 {
+            for test in testCases {
+                if now.timeIntervalSince(sessionStart!) >= test.time {
+                    if !test.executed {
+                        test.passed = test.condition()
+                        if test.passed {
+                            ARlog.session.logItems.append(LogItem(type: LogSymbol.passed.rawValue, title: test.description))
+                        } else {
+                            ARlog.session.logItems.append(LogItem(type: LogSymbol.failed.rawValue, title: test.description))
+                        }
+                        test.executed = true
+                    }
+                } else {
+                    testResetTime = (sessionStart?.addingTimeInterval(test.time))!
+                    break
+                }
+            }
+            ARlog.cam((sceneView!.pointOfView?.worldTransform)!)
+            testResetTime = now.addingTimeInterval(cameraInterval)
+        }
     }
     
     static public func didUpdate(anchor: ARAnchor) {
@@ -586,6 +694,7 @@ class ARlogStub : NSObject, ARSessionDelegate {
     }
     
     func session(_ session: ARSession, cameraDidChangeTrackingState camera: ARCamera) {
+        print("tracking state")
         var text = "unknown"
         switch camera.trackingState {
         case .notAvailable:
@@ -604,10 +713,17 @@ class ARlogStub : NSObject, ARSessionDelegate {
                 text = "Relocation of AR session"
             }
         }
-        ARlog.capture(text, title: "cameraDidChangeTrackingState")
+        ARlog.capture(text, title: "Tracking State")
     }
     
-    
+}
+
+class ARTestCase {
+    var description: String = ""
+    var time:Double = atSessionEnd
+    var condition:() -> Bool = { return false }
+    var executed:Bool = false
+    var passed:Bool = false
 }
 
 // EXTENSIONS -------------------------------------------------------------------------

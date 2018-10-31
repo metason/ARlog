@@ -80,13 +80,18 @@ The __ARInspector__ app supports the analysis of AR sessions recorded by ARlog. 
   * anchor points
   * generated 3D geometry added by the app to the scene
 * Tree view for inspecting the 3D scene graph
-* Keep video and 3D view in sync (view in 3D what the device camera looked at) 
+* Keep screen video and 3D view in sync (view in 3D what the device camera looked at) 
+* Highlight results of CV and ML in recorded screen video
 * List of events in a time-sorted table
 * Detailed data on events in a console
 * Create and manage issues (comments, ideas, bugs) within the session timeline
 
 ## ARlog Functions
-To enhance session logs with application-specific information, additional logging can be added programmatically in your code with the following functions.
+### Auto-Logging of AR activities
+ARlog will automatically capture and log basic activities of the AR library (feature points, anchors, planes) as well as system usage (cpu, memory, fps).
+
+### Inline Logging Functions
+To enhance session logs with application-specific information, additional logging can be added programmatically inline in your code with the following functions.
 
     ARlog.info(_ str:String) 
     ARlog.debug(_ str:String) 
@@ -99,14 +104,40 @@ To enhance session logs with application-specific information, additional loggin
     ARlog.map(_ map:ARWorldMap, title:String = "Map")
     
 In order to turn off ARlog set ARLOG_ENABLED = false at the beginning of ARlog.swift.
-If ARlog statements are embedded in  #if DEBUG conditions ARlog will not be linked to the productive release of your app. 
+If ARlog statements are embedded in #if DEBUG conditions ARlog will not be linked to the productive release of your app. 
 
-## Configure ARlog
+### Logging of Computer Vision (CV) and Machine Learning (ML) Results
+Create protocols of results gained by CV and ML techniques. _relRect_ depicts the relative bounding box rectangle within the screen. In ARInspector results are shown in the log timeline as well as overlay on top of the screen video. 
+
+    // colors as hexcode string e.g., "#RRGGBBAA"
+    ARlog.dominantColors(primary:String, secondary:String = "", relRect:CGRect = CGRect(x:0.0, y:0.0, width:1.0, height:1.0)) 
+    ARlog.classifiedImage(label:String, confidence:Float, relRect:CGRect = CGRect(x:0.0, y:0.0, width:1.0, height:1.0)) 
+    ARlog.detectedImage(label:String, confidence:Float, relRect:CGRect = CGRect(x:0.0, y:0.0, width:1.0, height:1.0)) 
+
+### Automatically Run Test Cases
+ARlog supports test cases that are automatically executed during an AR session. In ARInspector failed tests are added as open issues. Create test cases to ARlog with the following function:
+
+    // add test case with assertion to evaluate condition at time (in sec) after session start
+    ARlog.test(_ desc:String, assert: () -> Bool, at:Double = atSessionEnd)
+    
+Add  test cases to ARlog before the session is started. Here an example of some sample test cases:
+
+```swift
+    #if DEBUG
+        ARlog.test("A horizontal plane detected after 1 second?", assert: { return self.floorAnchor != nil }, at: 1.0)
+        ARlog.test("Floor detected after 3 seconds?", assert: { return self.mode != ARState.scanningFloor  }, at: 3.0)
+        ARlog.test("Any elements captured?", assert: { return self.elements.count > 0 })
+        ARlog.start(sceneView, sessionName: "ARSCNView")
+    #endif
+```
+    
+
+### Configure ARlog
 Configure the behavior of ARlog with these setting parameters.
 
     ARlog.maxSavedSessions = 4 // Amount of stored sessions on device. Olders will be deleted.
-    ARlog.autoLogScene:Bool = true // automatic logging of low-level events of ARKit
-    ARlog.continouslyLogScene:Bool = false // if false only scenes with changes in nodes are captured
+    ARlog.autoLogScene:Bool = true // automatic logging of 3D scene
+    ARlog.continouslyLogScene:Bool = false // if false scene is only captured when # of nodes changes 
     ARlog.autoLogMap:Bool = true // autolog WorldMaps
     ARlog.autoLogPlanes:Bool = true
     ARlog.autoLogImages:Bool = false // not yet implemented

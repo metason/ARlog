@@ -6,6 +6,8 @@
 //  See https://github.com/metason/ARlog for more details
 //
 
+#if DEBUG
+
 #if os(iOS)
 import UIKit
 #endif
@@ -33,6 +35,8 @@ public enum LogSymbol: String {
     case touch = "◎" // touch interaction
     case plane = "⬛️" // AR detected plane
     case planeUpdate = "🔲" // Update of AR detected plane
+    case passed = "✔️" // passed test
+    case failed = "❌" // failed test
     case image = "📷" // AR detected image
     case object = "⚫️" // AR detected object
     case face = "🙂" // AR detected face
@@ -321,3 +325,23 @@ public struct SpaceMap : Codable {
     var points: [Float] = [Float]() // array of float3: The list of detected points
     var identifiers: [UInt64] = [UInt64] () // UUIDs corresponding to detected float3 feature points? Not used!
 }
+
+// CV & ML DATA STRUCTURES -------------------------------------------------------------------------
+public enum ObservationType: String {
+    case dominantColors = "dominant colors"
+    case classifiedImage = "classified image"
+    case detectedImage = "detected image"
+    case detectedFace = "detected face"
+    case detectedBarcode = "detected barcode"
+    case detectedText = "detected text"
+}
+
+public struct SpaceObservation : Codable {
+    var type: String = "" // ObservationType
+    var id: String = "" // UUID: A unique identifier for the observation.
+    var feature:String = ""
+    var confidence:Float = 1.0
+    var bbox: [Float] = [Float]() // 2D or 3D as x, y, (z,) width, height, (depth)
+}
+
+#endif
