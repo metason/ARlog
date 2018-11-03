@@ -62,7 +62,7 @@ public class ARlog {
     // observed objects
     static var sceneView:ARSCNView?
     static var stub = ARlogStub() // is used as delegate forwarder for static ARlog
-    
+
     // time-dependent variables
     static var cameraResetTime:Date = Date.init()
     static var sceneResetTime:Date = Date.init()
@@ -430,7 +430,8 @@ public class ARlog {
         ARlog.videoInput.expectsMediaDataInRealTime = true
         //ARlog.assetWriter.shouldOptimizeForNetworkUse = true
         ARlog.assetWriter.add(ARlog.videoInput)
-        
+
+        var sessionStarted = false
         RPScreenRecorder.shared().startCapture(handler: { sample, bufferType, error in
             ARlog.isScreenRecording = error == nil
             if error != nil {
@@ -439,12 +440,11 @@ public class ARlog {
             }
             
             if CMSampleBufferDataIsReady(sample) {
-                //  if ARlog.assetWriter.status == AVAssetWriterStatus.unknown {
-                if ARlog.assetWriter.status == AVAssetWriter.Status.unknown {
-                    ARlog.assetWriter.startWriting()
+                if !sessionStarted {
                     ARlog.assetWriter.startSession(atSourceTime: CMSampleBufferGetPresentationTimeStamp(sample))
+                    sessionStarted = true
                 }
-                // if ARlog.assetWriter.status == AVAssetWriterStatus.failed
+
                 if ARlog.assetWriter.status == AVAssetWriter.Status.failed {
                     print("Error occured, status = \(ARlog.assetWriter.status.rawValue), \(ARlog.assetWriter.error!) \(String(describing: ARlog.assetWriter.error))")
                     return
@@ -460,7 +460,11 @@ public class ARlog {
             ARlog.isScreenRecording = error == nil
             if ARlog.isScreenRecording {
                 ARlog.session.logItems.append(LogItem(type: LogLevel.info.rawValue, title: "Screen recording started", data: (Date.init().toString()), assetPath: "screen.mp4"))
+                stub.delegate = sceneView!.session.delegate
                 sceneView!.session.delegate = stub // start listening to notifications
+                if !ARlog.assetWriter.startWriting() {
+                    print("Starting session failed")
+                }
             } else {
                 ARlog.error("Screen recording failed! " + (error?.localizedDescription)!)
             }
@@ -674,27 +678,31 @@ public class ARlog {
 }
 
 class ARlogStub : NSObject, ARSessionDelegate {
-    
+    var delegate: ARSessionDelegate?
+
     // Delegate functions
     
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        delegate?.session?(session, didUpdate: frame)
         ARlog.didUpdate(frame: frame)
     }
     
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
+        delegate?.session?(session, didAdd: anchors)
         for i in 0..<anchors.count {
             ARlog.didAdd(anchor: anchors[i])
         }
     }
     
     func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
+        delegate?.session?(session, didUpdate: anchors)
         for i in 0..<anchors.count {
             ARlog.didUpdate(anchor: anchors[i])
         }
     }
     
     func session(_ session: ARSession, cameraDidChangeTrackingState camera: ARCamera) {
-        print("tracking state")
+        delegate?.session?(session, cameraDidChangeTrackingState: camera)
         var text = "unknown"
         switch camera.trackingState {
         case .notAvailable:
@@ -714,6 +722,26 @@ class ARlogStub : NSObject, ARSessionDelegate {
             }
         }
         ARlog.capture(text, title: "Tracking State")
+    }
+
+    func session(_ session: ARSession, didFailWithError error: Error) {
+        delegate?.session?(session, didFailWithError: error)
+    }
+
+    func sessionWasInterrupted(_ session: ARSession) {
+        delegate?.sessionWasInterrupted?(session)
+    }
+
+    func sessionInterruptionEnded(_ session: ARSession) {
+        delegate?.sessionInterruptionEnded?(session)
+    }
+
+    func sessionShouldAttemptRelocalization(_ session: ARSession) -> Bool {
+        return delegate?.sessionShouldAttemptRelocalization?(session) ?? false
+    }
+
+    func session(_ session: ARSession, didOutputAudioSampleBuffer audioSampleBuffer: CMSampleBuffer) {
+        delegate?.session?(session, didOutputAudioSampleBuffer: audioSampleBuffer)
     }
     
 }
