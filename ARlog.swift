@@ -44,7 +44,8 @@ public class ARlog {
     static var isEnabled = ARLOG_ENABLED
     static var sessionStart:Date?
     static var sessionFolder:URL?
-    static var isScreenRecording = false
+    static var isScreenRecording = false // is recording
+    static var isRecordingWell = false // is recording without error
     static var assetWriter: AVAssetWriter!
     static var videoInput: AVAssetWriterInput!
     static var testCases:[ARTestCase] = []
@@ -433,7 +434,7 @@ public class ARlog {
 
         var recordingStarted = false
         RPScreenRecorder.shared().startCapture(handler: { sample, bufferType, error in
-            ARlog.isScreenRecording = error == nil
+            ARlog.isRecordingWell = error == nil
             if error != nil {
                 print(error!)
                 return
@@ -451,19 +452,22 @@ public class ARlog {
                 }
                 
                 if bufferType == .video {
-                    if ARlog.videoInput.isReadyForMoreMediaData {
+                    if ARlog.videoInput.isReadyForMoreMediaData && isScreenRecording {
                         ARlog.videoInput.append(sample)
                     }
                 }
             }
         }, completionHandler: { error in
-            ARlog.isScreenRecording = error == nil
-            if ARlog.isScreenRecording {
+            ARlog.isRecordingWell = error == nil
+            if ARlog.isRecordingWell {
                 ARlog.session.logItems.append(LogItem(type: LogLevel.info.rawValue, title: "Screen recording started", data: (Date.init().toString()), assetPath: "screen.mp4"))
                 stub.primeDelegate = sceneView!.session.delegate
                 sceneView!.session.delegate = stub // start listening to notifications
                 if !ARlog.assetWriter.startWriting() {
                     print("Starting session failed")
+                    isScreenRecording = false
+                } else {
+                    isScreenRecording = true
                 }
             } else {
                 ARlog.error("Screen recording failed! " + (error?.localizedDescription)!)
@@ -476,10 +480,10 @@ public class ARlog {
         guard ARlog.isScreenRecording else {
             return
         }
+        ARlog.isScreenRecording = false
         RPScreenRecorder.shared().stopCapture { error in
-            ARlog.isScreenRecording = false
             ARlog.assetWriter.finishWriting {
-                ARlog.isScreenRecording = false
+                ARlog.isRecordingWell = false
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
