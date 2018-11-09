@@ -28,22 +28,27 @@ public enum LogLevel: String {
 }
 
 public enum LogSymbol: String {
-    case data = "📂" // codable data as json
-    case capture = "📐" // AR capturing
-    case map = "🌐" // AR world map / space map / point cloud
-    case scene = "✚" // 3D element added to scene
-    case touch = "◎" // touch interaction
-    case plane = "⬛️" // AR detected plane
-    case planeUpdate = "🔲" // Update of AR detected plane
     case passed = "✔️" // passed test
     case failed = "❌" // failed test
-    case image = "📷" // AR detected image
-    case object = "⚫️" // AR detected object
-    case face = "🙂" // AR detected face
+    case data = "📂" // codable data as json
+    case scene = "✚" // 3D element added to scene
+    case touch = "◎" // touch interaction
+    case capture = "📐" // capture status of AR device
+    case map = "🌐" // AR world map / space map / point cloud
+    case plane = "⬛️" // detected plane
+    case planeUpdate = "🔲" // update of detected plane
+    case image = "📸" // detected image
+    case imageUpdate = "📷" // update of detected image
+    case object = "⚫️" // detected object
+    case objectUpdate = "⚪️" // update of detected object
+    case face = "🙂" // detected face
+    case faceUpdate = "😶" // update of detected face
     case anchor = "📌" // anchor in AR world
+    case text = "⏉" // detected text
+    case barcode = "⑉" // detected barcode
     case fps = "fps" // frames per second
-    case cam = "cam" // AR camera
-    case yshift = "yShift" // shift world coordinate reference in height (e.g. to plane)
+    case cam = "cam" // camera of AR device
+    case yshift = "yShift" // shift world coordinate reference in height (e.g. to floor plane)
 }
 
 // LOG ITEMS -------------------------------------------------------------------------
@@ -54,8 +59,8 @@ public struct LogItem : Codable {
     var title:String
     var data:String = "" // depends on type: text or json string
     var ref:String = "" // UUID of object or filename of asset, such as:
-                        // screen recording (.mp4), 3D (scenes/*.scn), or WorldMaps (maps/*.json)
-    var status:String = "" // floats for cpu usage in %, memory usage in MB
+                        // screen recording (.mp4), 3D (scenes/*.scn,*.dae), or WorldMaps (maps/*.json)
+    var status:String = "" // String with two floats: cpu usage in % and memory usage in MB
 
     private enum CodingKeys: String, CodingKey {
         case time
@@ -202,8 +207,14 @@ public struct LogSession : Codable {
         self.sessionName = name
         self.sessionStart = startTime
         #if os(iOS)
-        self.appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as! String
-        self.appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String
+        var str = Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+        if str != nil {
+            self.appName = str!
+        }
+        str = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        if str != nil {
+            self.appVersion = str!
+        }
         self.appID = Bundle.main.bundleIdentifier!
         #endif
     }
@@ -227,11 +238,11 @@ func getStatus() -> String {
     return String(cpuUsage()) + " " + String(memoryUsage())
 }
 
-func mach_task_self() -> task_t {
+private func mach_task_self() -> task_t {
     return mach_task_self_
 }
 
-func memoryUsage() -> Float { // in MB
+private func memoryUsage() -> Float { // in MB
     var info = mach_task_basic_info()
     var count = mach_msg_type_number_t(MemoryLayout.size(ofValue: info) / MemoryLayout<integer_t>.size)
     let kerr = withUnsafeMutablePointer(to: &info) { infoPtr in
@@ -296,8 +307,9 @@ private func cpuUsage() -> Float { // in %
 }
 #endif
 
-// AR DATA CAPTURING -------------------------------------------------------------------------
-// Data structures to store ARWorldMap & ARAnchors device-independantly (e.g. for macOS without ARKit)
+// AR DATA STRUCTURES -------------------------------------------------------------------------
+// Generic data structures to store AR elements device-independantly
+// (e.g. WorldMap and ARAnchors for macOS without ARKit)
 // Points are relative to the world coordinate origin of the session,
 // which is the place the device was when the AR session recording started.
 
@@ -305,6 +317,14 @@ public struct SpaceAnchor : Codable {
     var name: String = "" // A descriptive name for the anchor.
     var id: String = "" // UUID: A unique identifier for the anchor.
     var transform: [Float] = [Float]() // A float4x4 matrix encoding anchor relative to the world coordinate
+}
+
+public struct SpaceMap : Codable {
+    var center:[Float] = [Float]() // float3: Center point of the map's point cloud
+    var extent:[Float] = [Float]() // float3: The size of the map's point cloud
+    var anchors:[SpaceAnchor] = [SpaceAnchor]() // The set of anchors recorded in the world map/space map
+    var points: [Float] = [Float]() // array of float3: The list of detected points
+    var identifiers: [UInt64] = [UInt64] () // UUIDs corresponding to detected float3 feature points? Not used!
 }
 
 public struct DetectedPlane : Codable {
@@ -318,12 +338,15 @@ public struct DetectedPlane : Codable {
     var points: [Float] = [Float]() // array of float3: vertices of contour boundary
 }
 
-public struct SpaceMap : Codable {
-    var center:[Float] = [Float]() // float3: Center point of the map's point cloud
-    var extent:[Float] = [Float]() // float3: The size of the map's point cloud
-    var anchors:[SpaceAnchor] = [SpaceAnchor]() // The set of anchors recorded in the world map/space map
-    var points: [Float] = [Float]() // array of float3: The list of detected points
-    var identifiers: [UInt64] = [UInt64] () // UUIDs corresponding to detected float3 feature points? Not used!
+public struct DetectedFace : Codable {
+    var name: String = "" // A descriptive name for the anchor.
+    var id: String = "" // UUID: A unique identifier for the anchor.
+    var transform: [Float] = [Float]() // A float4x4 matrix encoding anchor relative to the world coordinate
+    var leftEyeTransform: [Float] = [Float]() // A float4x4 matrix
+    var rightEyeTransform: [Float] = [Float]() // A float4x4 matrix
+    var lookAt:[Float] = [Float]() // float3: look at point
+    var points: [Float] = [Float]() // array of float3: vertices of face geometry
+    var indices: [Int16] = [Int16]() // triangle indices
 }
 
 // CV & ML DATA STRUCTURES -------------------------------------------------------------------------
@@ -341,7 +364,7 @@ public struct SpaceObservation : Codable {
     var id: String = "" // UUID: A unique identifier for the observation.
     var feature:String = ""
     var confidence:Float = 1.0
-    var bbox: [Float] = [Float]() // 2D or 3D as x, y, (z,) width, height, (depth)
+    var bbox: [Float] = [Float]() // bounding box in 2D or 3D as x, y, (z,) width, height, (depth)
 }
 
 #endif
