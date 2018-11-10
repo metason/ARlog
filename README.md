@@ -55,7 +55,7 @@ Use XCode to get access to the logged data on your device:
 * Connect your device via USB cable to your Mac
 * Then select the Window -> Devices and Simulators menu in XCode
 * In the Devices tab select your app and then download the app container
-* In the Finder right-click on the downloaded .xcappdata file and select Show Content
+* In the Finder right-click on the downloaded .xcappdata file and select "Show Package Contents"
 * Logged session data can be found in AppData/Documents/ARlogs
 * Drag&drop corresponding session folders to a local directory
 
@@ -63,9 +63,10 @@ Each folder in AppData/Documents/ARlogs holds logged data of a specific session.
 
 
 ## ARInspector for AR Session Debugging and Usability Testing
-Coming soon ...
+Coming soon ...  (If you want to become beta tester feel free to send [me](mailto:philipp@metason.net) an email.)
 
-![ARInspector](Documentation/ARInspector.png)
+
+![ARInspector](Documentation/ARInspector.jpg)
 
 ### ARInspector for Mac 
 The __ARInspector__ app supports the analysis of AR sessions recorded by ARlog. The main features of ARInspector are:

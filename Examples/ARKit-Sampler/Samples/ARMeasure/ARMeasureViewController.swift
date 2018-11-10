@@ -79,7 +79,7 @@ class ARMeasureViewController: UIViewController, ARSCNViewDelegate {
             let distance = (endNode.position - startNode.position).length()
             print("distance: \(distance) [m]")
             ARlog.scene(sceneView.scene)
-            ARlog.info("distance: \(distance) [m]")
+            ARlog.info("distance: \(distance) [m]", title: "Measure")
             lineNode = drawLine(from: startNode, to: endNode, length: distance)
             
             statusLabel.text = String(format: "Distance: %.2f [m]", distance)

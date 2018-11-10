@@ -129,24 +129,24 @@ public class ARlog {
         ARlog.saveSession()
     }
     
-    static func info(_ str:String) {
-        ARlog.text(str, level:LogLevel.info, title: "Info")
+    static func info(_ str:String, title:String = "Info") {
+        ARlog.text(str, level:LogLevel.info, title: title)
     }
     
-    static func debug(_ str:String) {
-        ARlog.text(str, level:LogLevel.debug, title: "Debug")
+    static func debug(_ str:String, title:String =  "Debug") {
+        ARlog.text(str, level:LogLevel.debug, title: title)
     }
     
-    static func warning(_ str:String) {
-        ARlog.text(str, level:LogLevel.warning, title: "Warning")
+    static func warning(_ str:String, title:String =  "Warning") {
+        ARlog.text(str, level:LogLevel.warning, title: title)
     }
     
-    static func error(_ str:String) {
-        ARlog.text(str, level:LogLevel.error, title: "Error")
+    static func error(_ str:String, title:String =  "Error") {
+        ARlog.text(str, level:LogLevel.error, title: title)
     }
     
-    static func severe(_ str:String) {
-        ARlog.text(str, level:LogLevel.severe, title: "Severe Bug")
+    static func severe(_ str:String, title:String =  "Severe Bug") {
+        ARlog.text(str, level:LogLevel.severe, title: title)
     }
     
     static func text(_ str:String, level:LogLevel = .debug) {
