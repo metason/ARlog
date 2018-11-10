@@ -83,8 +83,11 @@ The __ARInspector__ app supports the analysis of AR sessions recorded by ARlog. 
 * Keep screen video and 3D view in sync (view in 3D what the device camera looked at) 
 * Highlight results of CV and ML in recorded screen video
 * List of events in a time-sorted table
-* Detailed data on events in a console
-* Create and manage issues (comments, ideas, bugs) within the session timeline
+* Detailed data on log events and of 3D scene elements in a console
+* Device and app info: Device model, OS version, screen size, main memory, app version, ...
+* Create and manage issues (failed tests, comments, ideas) within the session timeline
+* See report of session analysis  
+
 
 ## ARlog Functions
 ### Auto-Logging of AR activities
@@ -147,3 +150,8 @@ Configure the behavior of ARlog with these setting parameters.
     ARlog.cameraInterval:Double = 0.5 // interval for storing camera/device pose
     ARlog.sceneInterval:Double = 0.25 // interval for storing 3D scenes when continouslyLogScene is true
     ARlog.mapInterval:Double = 1.0 // interval for storing AR world map / space map 
+
+## Examples
+Sample usage of ARlog shown within [ARKit-Sampler](https://github.com/shu223/ARKit-Sampler),  a collection of ARKit applications developed by [Shuichi Tsutsumi](https://github.com/shu223). Open the XCode project in the "Examples" folder. Search for "ARlog" in the XCode workspace to see examples of howto use ARlog.
+
+For running ARKit-Sampler follow the instructions in the [README](Examples/README.md) file of the project. 
