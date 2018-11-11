@@ -86,8 +86,8 @@ The __ARInspector__ app supports the analysis of AR sessions recorded by ARlog. 
 * List of events in a time-sorted table
 * Detailed data on log events and of 3D scene elements in a console
 * Device and app info: Device model, OS version, screen size, main memory, app version, ...
+* Automatic session analysis as summary report 
 * Create and manage issues (failed tests, comments, ideas) within the session timeline
-* See report of session analysis  
 
 
 ## ARlog Functions

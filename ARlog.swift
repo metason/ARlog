@@ -275,7 +275,7 @@ public class ARlog {
     static public func mapOf(_ session:ARSession, title:String = "Map") {
         session.getCurrentWorldMap { (worldMap, error) in
             guard let worldMap = worldMap else {
-                print("Error getting current world map.")
+                //print("Error getting current world map.")
                 return
             }
             ARlog.map(worldMap)
@@ -482,6 +482,11 @@ public class ARlog {
             ARlog.isRecordingWell = error == nil
             if error != nil {
                 print(error!)
+                DispatchQueue.main.async(execute: {
+                    let alert = UIAlertController(title: "Error in capturing screen!", message: (error?.localizedDescription)!, preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "Continue", style: .default, handler: nil))
+                    UIApplication.shared.keyWindow?.rootViewController!.present(alert, animated: false)
+                })
                 return
             }
             
@@ -509,13 +514,23 @@ public class ARlog {
                 stub.primeDelegate = sceneView!.session.delegate
                 sceneView!.session.delegate = stub // start listening to notifications
                 if !ARlog.assetWriter.startWriting() {
-                    print("Starting session failed")
+                    print("Writing video failed.")
+                    DispatchQueue.main.async(execute: {
+                        let alert = UIAlertController(title: "Error in capturing screen!", message: "Writing video failed.", preferredStyle: .alert)
+                        alert.addAction(UIAlertAction(title: "Continue", style: .default, handler: nil))
+                        UIApplication.shared.keyWindow?.rootViewController!.present(alert, animated: false)
+                    })
                     isScreenRecording = false
                 } else {
                     isScreenRecording = true
                 }
             } else {
                 ARlog.error("Screen recording failed! " + (error?.localizedDescription)!)
+                DispatchQueue.main.async(execute: {
+                    let alert = UIAlertController(title: "Error in capturing screen!", message: (error?.localizedDescription)!, preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "Continue", style: .default, handler: nil))
+                    UIApplication.shared.keyWindow?.rootViewController!.present(alert, animated: false)
+                })
             }
         })
         
