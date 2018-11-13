@@ -96,8 +96,8 @@ public class ARlog {
         // ToDo: fix
         //ARlog.session.kitVersion = arKitVersion
         
-        ARlog.startScreenRecording()
         ARlog.sceneView = observing
+        ARlog.startScreenRecording()
     }
     
     // use finalizeFunction to set user, location, and extra
