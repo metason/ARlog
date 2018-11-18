@@ -108,6 +108,7 @@ public class ARlog {
     
     // use finalizeFunction to set user, location, and extra
     static func stop(finalizeFunction: () -> Void = {}) {
+        if !isEnabled { return }
         // run missing tests
         for test in testCases {
             if !test.executed {
@@ -121,9 +122,6 @@ public class ARlog {
             }
         }
         finalizeFunction()
-        if !isEnabled {
-            return
-        }
         ARlog.session.logItems.append(LogItem(type: LogLevel.info.rawValue, title: "Screen recording stopped", data: (ARlog.sessionStart?.toString())!, assetPath: "screen.mp4"))
         ARlog.stopScreenRecording()
         ARlog.saveSession()
@@ -342,6 +340,7 @@ public class ARlog {
     
     // colors as hexcode "#RRGGBBAA"
     static func dominantColors(primary:String, secondary:String = "", relRect:CGRect = CGRect(x:0.0, y:0.0, width:1.0, height:1.0)) {
+        if !isEnabled { return }
         var observation = SpaceObservation()
         observation.type = ObservationType.dominantColors.rawValue
         observation.confidence = 1.0
@@ -364,6 +363,7 @@ public class ARlog {
     }
     
     static func classifiedImage(label:String, confidence:Float, relRect:CGRect = CGRect(x:0.0, y:0.0, width:1.0, height:1.0)) {
+        if !isEnabled { return }
         var observation = SpaceObservation()
         observation.type = ObservationType.classifiedImage.rawValue
         observation.feature = label
@@ -382,6 +382,7 @@ public class ARlog {
     }
     
     static func detectedImage(label:String, confidence:Float, relRect:CGRect = CGRect(x:0.0, y:0.0, width:1.0, height:1.0)) {
+        if !isEnabled { return }
         var observation = SpaceObservation()
         observation.type = ObservationType.detectedImage.rawValue
         observation.feature = label
@@ -401,6 +402,7 @@ public class ARlog {
     
     // add test case with assertion to evaluate condition at time (in sec) after session start
     static func test(_ desc:String, assert: @escaping () -> Bool, at:Double = atSessionEnd) {
+        if !isEnabled { return }
         let testCase = ARTestCase()
         testCase.description = desc
         testCase.condition = assert
