@@ -6,7 +6,7 @@
 //  See https://github.com/metason/ARlog for more details
 //
 
-#if DEBUG
+#if DEBUG || os(macOS)
 
 #if os(iOS)
 import UIKit
