@@ -598,6 +598,10 @@ public class ARlog {
                     plane.type = "table"
                 case .seat:
                     plane.type = "seat"
+                case .window:
+                    plane.type = "window"
+                case .door:
+                    plane.type = "door"
                 }
             }
         } else {
