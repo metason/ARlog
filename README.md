@@ -61,6 +61,8 @@ Use XCode to get access to the logged data on your device:
 
 Each folder in AppData/Documents/ARlogs holds logged data of a specific session. The name of the session folder encodes the date and time when the log recording started. 
 
+### ARlog Upload
+ARlogUpdate.swift can be added to an app in oder to automatically upload all ARlog files to a server from where the ARInspector App can download the session log.
 
 ## ARInspector for AR Session Debugging and Usability Testing
 Coming soon ...  (If you want to become beta tester feel free to send [me](mailto:philipp@metason.net) an email.)
