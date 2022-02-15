@@ -121,6 +121,7 @@ public class ARlog {
         
         ARlog.startScreenRecording()
         ARlog.sceneView = observing
+        ARlog.startScreenRecording()
     }
     
     // use finalizeFunction to set user, location, and extra
