@@ -6,7 +6,7 @@
 //  See https://github.com/metason/ARlog for more details
 //
 
-#if DEBUG || os(macOS)
+#if DEBUG
 
 #if os(iOS)
 import UIKit
@@ -44,6 +44,7 @@ public enum LogSymbol: String {
     case face = "🙂" // detected face
     case faceUpdate = "😶" // update of detected face
     case anchor = "📌" // anchor in AR world
+    case anchorUpdate = "📍" // update of anchor
     case text = "⏉" // detected text
     case barcode = "⑉" // detected barcode
     case fps = "fps" // frames per second

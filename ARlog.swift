@@ -10,13 +10,18 @@
 
 import Foundation
 import SceneKit
+import ModelIO
 import ARKit
 import ReplayKit
 
 // STATIC SETTING DEFAULTS
-private let ARLOG_ENABLED = true // turn functionality of ARlog on/off
-// Be aware of storage usage by ARlog especially by screen recording.
-private let MAX_SAVED_SESSIONS = 4 // # of sessions on device. Olders will be deleted.
+// Enable/disable ARlog
+private let ARLOG_ENABLED = false  // turn functionality of ARlog on/off
+// # of sessions on device. Olders will be deleted.
+private let MAX_SAVED_SESSIONS = 4 // Be aware of storage usage by ARlog especially by screen recording.
+// Project ID for automatic uploading to the ARInspector. More details on https://service.metason.net/arlog
+private let ARLOG_PROJECTID = "bdc375b1-13ea-4f49-aa7b-d28259f9ca52" // bdc375b1-13ea-4f49-aa7b-d28259f9ca52 // If ID is empty automatic background uploading will not happen.
+// Create your own ID with "curl -X POST https://service.metason.net/arlog/createproject/<projectName>"
 
 // CONSTANTS
 public let atSessionStart:Double = 0.0
@@ -29,18 +34,26 @@ public class ARlog {
     static public var maxSavedSessions = MAX_SAVED_SESSIONS
     static public var autoLogScene:Bool = true
     static public var continouslyLogScene:Bool = false // if false only scenes with changes in # of nodes are captured
-    static public var autoLogMap:Bool = true // autolog WorldMaps
     static public var autoLogPlanes:Bool = true
     //static public var autoLogImages:Bool = false // not yet implemented
     //static public var autoLogObjects:Bool = false // not yet implemented
     static public var autoLogFaces:Bool = false // Hint: not yet tested
+    static public var autoLogAnchors:Bool = true // all other anchors then plane, image, object, or face
     // Intervals for auto logging: no autologging when interval = 0.0
     static public var cameraInterval:Double = 0.5 // interval for storing camera/device poses
     static public var sceneInterval:Double = 0.25 // interval for storing 3D scenes when continouslyLogScene is true
     static public var mapInterval:Double = 1.0 // interval for storing AR world maps / space maps
     static let fpsInterval:Double = 1.0 // frames per second, therefore interval is 1.0
-
     
+    // File format to save 3D scene
+    // "scn": ok (but not usable in Web)
+    // "obj": NOT ok: .obj & .mtl files are generated, but geometry (of multiple objects) and colors are wrong
+    // "usdc": NOT ok: geometry is generated, but with wrong transform matrix and wrong color (only converts PBM?)
+    // "usdz": NOT supported by Model I/O
+    // "dae": Collada NOT supported by Model I/O on iOS
+    // "gltf": NOT (yet) available, would be preferred
+    static let sceneFileExtension = "scn"
+
     // Internal objects
     static var isEnabled = ARLOG_ENABLED
     static var sessionStart:Date?
@@ -82,6 +95,10 @@ public class ARlog {
         if !isEnabled {
             print(LogLevel.warning.rawValue + " ARlog session recording is disabled!")
             return
+        }
+        print("ARlog start")
+        if #available(iOS 13.0, *) {
+            encoder.outputFormatting = .withoutEscapingSlashes
         }
         ARlog.sceneView = nil
         previousPointsCount = 0
@@ -125,6 +142,17 @@ public class ARlog {
         ARlog.session.logItems.append(LogItem(type: LogLevel.info.rawValue, title: "Screen recording stopped", data: (ARlog.sessionStart?.toString())!, assetPath: "screen.mp4"))
         ARlog.stopScreenRecording()
         ARlog.saveSession()
+        ARlog.upload()
+    }
+    
+    static func upload(){
+        if ARLOG_PROJECTID.length > 0 {
+            let uploader = ARlogUpload(projectID: ARLOG_PROJECTID)
+            let fileUrl: String = sessionFolder!.absoluteString
+            var sessionname: String = (sessionFolder?.lastPathComponent)!
+            sessionname = sessionname.replacingOccurrences(of: " ", with: "--")
+            uploader.upload(fileUrl, sessionname)
+        }
     }
     
     static func info(_ str:String, title:String = "Info") {
@@ -152,7 +180,7 @@ public class ARlog {
     }
     
     static func text(_ str:String, level:LogLevel = .debug, title:String = "Message") {
-        print(level.rawValue + " " + title + ": " + str)
+        //print(level.rawValue + " " + title + ": " + str)
         if !isEnabled { return }
         ARlog.session.logItems.append(LogItem(type: level.rawValue, title: title, data: str))
     }
@@ -199,7 +227,7 @@ public class ARlog {
     
     static public func scene(_ scene:SCNScene, title:String = "Scene") {
         if !isEnabled { return }
-        let fileName = Date.init().toBaseName() + ".scn"
+        let fileName = Date.init().toBaseName() + "." + sceneFileExtension
         let scenesURL = sessionFolder?.appendingPathComponent("scenes", isDirectory: true)
         let fileURL = scenesURL?.appendingPathComponent(String(fileName))
         let fileManager = FileManager.default
@@ -217,15 +245,31 @@ public class ARlog {
             exporter = SceneExporter(targetPath: scenesURL!.path)
         }
         DispatchQueue.global(qos: .userInitiated).async {
-            // ToDo: delegate is never called!
-            let options = [SCNSceneExportDestinationURL: scenesURL!.path]
-            scene.write(to: fileURL!, options: options, delegate: exporter, progressHandler: { (totalProgress, error, stop) in
-                if error != nil {
-                    DispatchQueue.main.async {
-                        print("Scene writing progress \(totalProgress). Error: \(String(describing: error))")
+            switch sceneFileExtension {
+            case "scn":
+                let options = [SCNSceneExportDestinationURL: scenesURL!.path]
+                scene.write(to: fileURL!, options: options, delegate: exporter, progressHandler: { (totalProgress, error, stop) in
+                    if error != nil {
+                        DispatchQueue.main.async {
+                            print("Scene writing progress \(totalProgress). Error: \(String(describing: error))")
+                        }
                     }
+                })
+            case "obj", "usdc":
+                if MDLAsset.canExportFileExtension(sceneFileExtension) {
+                    let asset = MDLAsset(scnScene: scene)
+                    do {
+                        try asset.export(to: fileURL!)
+                    } catch let error {
+                        DispatchQueue.main.async {
+                            print("Scene writing error: \(String(describing: error))")
+                        }
+                    }
+                    
                 }
-            })
+            default:
+                break
+            }
             // ToDo: unfortunately exporter delegate is NOT called, so let's export the textures
             sceneView!.scene.rootNode.enumerateChildNodes { (node, stop) in
                 let geom = node.geometry
@@ -478,13 +522,12 @@ public class ARlog {
         ARlog.videoInput.expectsMediaDataInRealTime = true
         //ARlog.assetWriter.shouldOptimizeForNetworkUse = true
         ARlog.assetWriter.add(ARlog.videoInput)
-
         var recordingStarted = false
         RPScreenRecorder.shared().startCapture(handler: { sample, bufferType, error in
             ARlog.isRecordingWell = error == nil
-            if error != nil {
-                print(error!)
+            if error != nil || !RPScreenRecorder.shared().isAvailable {
                 DispatchQueue.main.async(execute: {
+                    print(error!)
                     let alert = UIAlertController(title: "Error in capturing screen!", message: (error?.localizedDescription)!, preferredStyle: .alert)
                     alert.addAction(UIAlertAction(title: "Continue", style: .default, handler: nil))
                     UIApplication.shared.keyWindow?.rootViewController!.present(alert, animated: false)
@@ -493,7 +536,11 @@ public class ARlog {
             }
             
             if CMSampleBufferDataIsReady(sample) {
+                if ARlog.assetWriter.status == AVAssetWriter.Status.unknown {
+                    return
+                }
                 if !recordingStarted {
+                    print("ARlog.assetWriter.startSession")
                     ARlog.assetWriter.startSession(atSourceTime: CMSampleBufferGetPresentationTimeStamp(sample))
                     recordingStarted = true
                 }
@@ -515,6 +562,7 @@ public class ARlog {
                 ARlog.session.logItems.append(LogItem(type: LogLevel.info.rawValue, title: "Screen recording started", data: (Date.init().toString()), assetPath: "screen.mp4"))
                 stub.primeDelegate = sceneView!.session.delegate
                 sceneView!.session.delegate = stub // start listening to notifications
+                print("ARlog.assetWriter.startWriting")
                 if !ARlog.assetWriter.startWriting() {
                     print("Writing video failed.")
                     DispatchQueue.main.async(execute: {
@@ -535,7 +583,6 @@ public class ARlog {
                 })
             }
         })
-        
     }
     
     static private func stopScreenRecording() {
@@ -584,7 +631,7 @@ public class ARlog {
         plane.center = [planeAnchor.center.x, planeAnchor.center.y, planeAnchor.center.z]
         plane.extent = [planeAnchor.extent.x, planeAnchor.extent.y, planeAnchor.extent.z]
         if #available(iOS 12.0, *) {
-            if ARPlaneAnchor.isClassificationSupported { // only on iPhone XS, iPhone XS Max, iPhone XR
+            if ARPlaneAnchor.isClassificationSupported { // only on iPhone XS, iPhone XS Max, iPhone XR and later
                 switch planeAnchor.classification {
                 case .floor:
                     plane.type = "floor"
@@ -600,6 +647,12 @@ public class ARlog {
                     plane.type = "table"
                 case .seat:
                     plane.type = "seat"
+                case .window:
+                    plane.type = "window"
+                case .door:
+                    plane.type = "door"
+                default:
+                    break
                 }
             }
         } else {
@@ -652,6 +705,17 @@ public class ARlog {
         return face
     }
     
+    static private func createSpaceAnchor(anchor:ARAnchor) -> SpaceAnchor {
+        var sa = SpaceAnchor()
+        if anchor.name != nil {
+            sa.name = anchor.name!
+        }
+        sa.id = anchor.identifier.uuidString
+        let matrix = SCNMatrix4(anchor.transform)
+        sa.transform = matrix.toFloats()
+        return sa
+    }
+    
     static public func didAdd(anchor: ARAnchor) {
         // autolog for planes
         if ARlog.autoLogPlanes {
@@ -667,6 +731,7 @@ public class ARlog {
                 ARlog.session.logItems.append(LogItem(type: LogSymbol.plane.rawValue, title: "Plane detected", data: str))
                 return
             }
+            
         }
         
         // Todo: check for images
@@ -687,7 +752,68 @@ public class ARlog {
                 return
             }
         }
-
+        
+        // default anchors
+        if ARlog.autoLogAnchors {
+            let anc = createSpaceAnchor(anchor: anchor)
+            var str = "anchor"
+            ARlog.encoder.outputFormatting = []
+            let data = try? ARlog.encoder.encode(anc)
+            if data != nil {
+                str = String(data: data!, encoding: .utf8)!
+            }
+            ARlog.session.logItems.append(LogItem(type: LogSymbol.anchor.rawValue, title: "Anchor added", data: str))
+            return
+        }
+    }
+    
+    static public func didUpdate(anchor: ARAnchor) {
+        // check for planes (all plane updates, we can't apply a time interval)
+        if ARlog.autoLogPlanes {
+            if let planeAnchor = anchor as? ARPlaneAnchor {
+                let plane = createDetectedPlane(planeAnchor: planeAnchor)
+                var str = "plane"
+                ARlog.encoder.outputFormatting = []
+                let data = try? ARlog.encoder.encode(plane)
+                if data != nil {
+                    str = String(data: data!, encoding: .utf8)!
+                }
+                ARlog.session.logItems.append(LogItem(type: LogSymbol.planeUpdate.rawValue, title: "Plane update", data: str))
+                return
+            }
+        }
+        
+        // Todo: check for images
+        
+        // Todo: check for objects
+        
+        // Todo: check for faces
+        if ARlog.autoLogFaces {
+            if let faceAnchor = anchor as? ARFaceAnchor {
+                let face = createDetectedFace(faceAnchor: faceAnchor)
+                var str = "face"
+                ARlog.encoder.outputFormatting = []
+                let data = try? ARlog.encoder.encode(face)
+                if data != nil {
+                    str = String(data: data!, encoding: .utf8)!
+                }
+                ARlog.session.logItems.append(LogItem(type: LogSymbol.faceUpdate.rawValue, title: "Face update", data: str))
+                return
+            }
+        }
+        
+        // default anchors
+        if ARlog.autoLogAnchors {
+            let anc = createSpaceAnchor(anchor: anchor)
+            var str = "anchor"
+            ARlog.encoder.outputFormatting = []
+            let data = try? ARlog.encoder.encode(anc)
+            if data != nil {
+                str = String(data: data!, encoding: .utf8)!
+            }
+            ARlog.session.logItems.append(LogItem(type: LogSymbol.anchorUpdate.rawValue, title: "Anchor update", data: str))
+            return
+        }
     }
     
     static public func didUpdate(frame: ARFrame) {
@@ -760,42 +886,6 @@ public class ARlog {
         }
     }
     
-    static public func didUpdate(anchor: ARAnchor) {
-        // check for planes (all plane updates, we can't apply a time interval)
-        if ARlog.autoLogPlanes {
-            if let planeAnchor = anchor as? ARPlaneAnchor {
-                let plane = createDetectedPlane(planeAnchor: planeAnchor)
-                var str = "plane"
-                ARlog.encoder.outputFormatting = []
-                let data = try? ARlog.encoder.encode(plane)
-                if data != nil {
-                    str = String(data: data!, encoding: .utf8)!
-                }
-                ARlog.session.logItems.append(LogItem(type: LogSymbol.planeUpdate.rawValue, title: "Plane update", data: str))
-                return
-            }
-        }
-        
-        // Todo: check for images
-        
-        // Todo: check for objects
-        
-        // Todo: check for faces
-        if ARlog.autoLogFaces {
-            if let faceAnchor = anchor as? ARFaceAnchor {
-                let face = createDetectedFace(faceAnchor: faceAnchor)
-                var str = "face"
-                ARlog.encoder.outputFormatting = []
-                let data = try? ARlog.encoder.encode(face)
-                if data != nil {
-                    str = String(data: data!, encoding: .utf8)!
-                }
-                ARlog.session.logItems.append(LogItem(type: LogSymbol.faceUpdate.rawValue, title: "Face update", data: str))
-                return
-            }
-        }
-    }
-    
 }
 
 class SceneExporter : NSObject, SCNSceneExportDelegate {
@@ -809,12 +899,12 @@ class SceneExporter : NSObject, SCNSceneExportDelegate {
     
     // ToDo: this is never called!
     func write(_ image: UIImage, withSceneDocumentURL documentURL: URL, originalImageURL: URL?) -> URL? {
-        print("SceneExporter write image")
-        print(folderPath as Any)
-        print(documentURL.path)
-        if originalImageURL != nil {
-            print(originalImageURL!.path)
-        }
+//        print("SceneExporter write image")
+//        print(folderPath as Any)
+//        print(documentURL.path)
+//        if originalImageURL != nil {
+//            print(originalImageURL!.path)
+//        }
         return URL(fileURLWithPath: folderPath).appendingPathComponent("1.png")
     }
  
@@ -823,14 +913,12 @@ class SceneExporter : NSObject, SCNSceneExportDelegate {
         if !fileNames.contains(url.lastPathComponent) {
             if path.contains("asset") {
                 let imgURL = Bundle.main.url(forResource: path, withExtension: nil)!
-                if imgURL != nil {
-                    let fileManager = FileManager.default
-                    do {
-                        try fileManager.copyItem(at: imgURL, to:toFolder.appendingPathComponent(url.lastPathComponent))
-                        fileNames.append(url.lastPathComponent)
-                    } catch let error {
-                        print("copying texture failed!")
-                    }
+                let fileManager = FileManager.default
+                do {
+                    try fileManager.copyItem(at: imgURL, to:toFolder.appendingPathComponent(url.lastPathComponent))
+                    fileNames.append(url.lastPathComponent)
+                } catch let error {
+                    print("copying texture failed! \(error)")
                 }
             }
         }
