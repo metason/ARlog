@@ -21,9 +21,9 @@ private let USE_AIRDROP = true // use AirDrop to upload session folder
 
 // # of sessions on device. Olders will be deleted.
 private let MAX_SAVED_SESSIONS = 4 // Be aware of storage usage by ARlog especially by screen recording.
-// Project ID for automatic uploading to the ARInspector. More details on https://service.metason.net/arlog
 
 // Uplaoding via server no longer supported. Use AirDrop uploading.
+// Project ID for automatic uploading to the ARInspector. More details on https://service.metason.net/arlog
 // private let ARLOG_PROJECTID = "" // If ID is empty automatic background uploading will not happen.
 // Create your own ID with "curl -X POST https://service.metason.net/arlog/createproject/<projectName>"
 
