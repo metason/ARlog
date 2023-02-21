@@ -17,10 +17,14 @@ import ReplayKit
 // STATIC SETTING DEFAULTS
 // Enable/disable ARlog
 private let ARLOG_ENABLED = false  // turn functionality of ARlog on/off
+private let USE_AIRDROP = true // use AirDrop to upload session folder
+
 // # of sessions on device. Olders will be deleted.
 private let MAX_SAVED_SESSIONS = 4 // Be aware of storage usage by ARlog especially by screen recording.
 // Project ID for automatic uploading to the ARInspector. More details on https://service.metason.net/arlog
-private let ARLOG_PROJECTID = "" // If ID is empty automatic background uploading will not happen.
+
+// Uplaoding via server no longer supported. Use AirDrop uploading.
+// private let ARLOG_PROJECTID = "" // If ID is empty automatic background uploading will not happen.
 // Create your own ID with "curl -X POST https://service.metason.net/arlog/createproject/<projectName>"
 
 // CONSTANTS
@@ -146,13 +150,42 @@ public class ARlog {
     }
     
     static func upload(){
-        if ARLOG_PROJECTID.length > 0 {
-            let uploader = ARlogUpload(projectID: ARLOG_PROJECTID)
-            let fileUrl: String = sessionFolder!.absoluteString
-            var sessionname: String = (sessionFolder?.lastPathComponent)!
-            sessionname = sessionname.replacingOccurrences(of: " ", with: "--")
-            uploader.upload(fileUrl, sessionname)
+        if USE_AIRDROP && sessionFolder != nil {
+            let objectsToShare = [sessionFolder!]
+            var excludedActivities = [
+                UIActivity.ActivityType.message,
+                UIActivity.ActivityType.mail,
+                UIActivity.ActivityType.copyToPasteboard,
+                UIActivity.ActivityType.postToFacebook,
+                UIActivity.ActivityType.assignToContact,
+                UIActivity.ActivityType.addToReadingList,
+                UIActivity.ActivityType.postToTencentWeibo
+            ]
+            if #available(iOS 15.4, *) {
+                excludedActivities.append(UIActivity.ActivityType.sharePlay)
+            }
+            if #available(iOS 16.0, *) {
+                excludedActivities.append(UIActivity.ActivityType.collaborationCopyLink)
+                excludedActivities.append(UIActivity.ActivityType.collaborationInviteWithLink)
+            }
+            let activityController = UIActivityViewController(activityItems: objectsToShare, applicationActivities: nil)
+            activityController.excludedActivityTypes = excludedActivities
+            let keyWindow = UIApplication.shared.windows.filter {$0.isKeyWindow}.first
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                // must be set on iPad
+                activityController.popoverPresentationController?.sourceView = keyWindow?.rootViewController!.view
+                activityController.popoverPresentationController?.sourceRect = CGRect(x: 160.0, y: 120.0, width: 20.0, height: 20.0)
+            }
+            keyWindow?.rootViewController!.present(activityController, animated: true, completion: nil)
+            return
         }
+//        if ARLOG_PROJECTID.length > 0 {
+//            let fileUrl: String = sessionFolder!.absoluteString
+//            let uploader = ARlogUpload(projectID: ARLOG_PROJECTID)
+//            var sessionname: String = (sessionFolder?.lastPathComponent)!
+//            sessionname = sessionname.replacingOccurrences(of: " ", with: "--")
+//            uploader.upload(fileUrl, sessionname)
+//        }
     }
     
     static func info(_ str:String, title:String = "Info") {
